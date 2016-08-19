@@ -27,6 +27,10 @@ Bugfixes
 - Correctly refuse to send header blocks that contain neither :authority nor
   Host headers, or header blocks which contain mismatched :authority and Host
   headers, per RFC 7540 Section 8.1.2.3.
+- Correctly refuse to send header blocks with a TE header whose value is not
+  ``trailers``, with connection-specific headers, with duplicate pseudo-header
+  fields, or with pseudo-header fields that appear after an ordinary header
+  field.
 
 2.4.0 (2016-07-01)
 ------------------
