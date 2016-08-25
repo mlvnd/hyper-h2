@@ -11,7 +11,7 @@ import collections
 
 from hyperframe.frame import SettingsFrame
 
-from h2.errors import PROTOCOL_ERROR, FLOW_CONTROL_ERROR
+from h2.errors import ErrorCodes
 from h2.exceptions import InvalidSettingsValueError
 
 
@@ -33,30 +33,26 @@ MAX_CONCURRENT_STREAMS = SettingsFrame.MAX_CONCURRENT_STREAMS
 #: control.
 INITIAL_WINDOW_SIZE = SettingsFrame.INITIAL_WINDOW_SIZE
 
+#: Indicates the size of the largest frame payload that the sender is willing
+#: to receive, in octets.
+MAX_FRAME_SIZE = None
+
+#: This advisory setting informs a peer of the maximum size of header list that
+#: the sender is prepared to accept, in octets.  The value is based on the
+#: uncompressed size of header fields, including the length of the name and
+#: value in octets plus an overhead of 32 octets for each header field.
+#:
+#: .. versionadded:: 2.5.0
+MAX_HEADER_LIST_SIZE = None
+
 try:  # Platform-specific: Hyperframe < 4.0.0
-    #: Indicates the size of the largest frame payload that the sender is
-    #: willing to receive, in octets.
     MAX_FRAME_SIZE = SettingsFrame.SETTINGS_MAX_FRAME_SIZE
 except AttributeError:  # Platform-specific: Hyperframe >= 4.0.0
-    #: Indicates the size of the largest frame payload that the sender is
-    #: willing to receive, in octets.
     MAX_FRAME_SIZE = SettingsFrame.MAX_FRAME_SIZE
 
 try:  # Platform-specific: Hyperframe < 4.0.0
-    #: This advisory setting informs a peer of the maximum size of header list
-    #: that the sender is prepared to accept, in octets.  The value is based on
-    #: the uncompressed size of header fields, including the length of the name
-    #: and value in octets plus an overhead of 32 octets for each header field.
-    #:
-    #: .. versionadded:: 2.5.0
     MAX_HEADER_LIST_SIZE = SettingsFrame.SETTINGS_MAX_HEADER_LIST_SIZE
 except AttributeError:  # Platform-specific: Hyperframe >= 4.0.0
-    #: This advisory setting informs a peer of the maximum size of header list
-    #: that the sender is prepared to accept, in octets.  The value is based on
-    #: the uncompressed size of header fields, including the length of the name
-    #: and value in octets plus an overhead of 32 octets for each header field.
-    #:
-    #: .. versionadded:: 2.5.0
     MAX_HEADER_LIST_SIZE = SettingsFrame.MAX_HEADER_LIST_SIZE
 
 
@@ -265,15 +261,15 @@ def _validate_setting(setting, value):
     """
     if setting == ENABLE_PUSH:
         if value not in (0, 1):
-            return PROTOCOL_ERROR
+            return ErrorCodes.PROTOCOL_ERROR
     elif setting == INITIAL_WINDOW_SIZE:
         if not 0 <= value <= 2147483647:  # 2^31 - 1
-            return FLOW_CONTROL_ERROR
+            return ErrorCodes.FLOW_CONTROL_ERROR
     elif setting == MAX_FRAME_SIZE:
         if not 16384 <= value <= 16777215:  # 2^14 and 2^24 - 1
-            return PROTOCOL_ERROR
+            return ErrorCodes.PROTOCOL_ERROR
     elif setting == MAX_HEADER_LIST_SIZE:
         if not value > 0:
-            return PROTOCOL_ERROR
+            return ErrorCodes.PROTOCOL_ERROR
 
     return 0

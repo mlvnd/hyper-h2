@@ -19,7 +19,7 @@ from hpack.hpack import Encoder, Decoder
 from hpack.exceptions import HPACKError
 
 from .config import H2Configuration
-from .errors import PROTOCOL_ERROR, REFUSED_STREAM
+from .errors import ErrorCodes, _error_code_from_int
 from .events import (
     WindowUpdated, RemoteSettingsChanged, PingAcknowledged,
     SettingsAcknowledged, ConnectionTerminated, PriorityUpdated,
@@ -457,7 +457,7 @@ class H2Connection(object):
         .. versionadded:: 2.3.0
 
         .. deprecated:: 2.5.0
-           Use :data:`config <H2Connection.config>` instead.
+           Use :data:`config <h2.connection.H2Connection.config>` instead.
         """
         return self.config.header_encoding
 
@@ -477,7 +477,7 @@ class H2Connection(object):
         properties. Defaults to ``True``.
 
         .. deprecated:: 2.5.0
-           Use :data:`config <H2Connection.config>` instead.
+           Use :data:`config <h2.connection.H2Connection.config>` instead.
         """
         return self.config.client_side
 
@@ -717,7 +717,7 @@ class H2Connection(object):
         this, any one of ``priority_weight``, ``priority_depends_on``, or
         ``priority_exclusive`` must be set to a value that is not ``None``. For
         more information on the priority fields, see :meth:`prioritize
-        <H2Connection.prioritize>`.
+        <h2.connection.H2Connection.prioritize>`.
 
         .. warning:: In HTTP/2, it is mandatory that all the HTTP/2 special
             headers (that is, ones whose header keys begin with ``:``) appear
@@ -750,22 +750,24 @@ class H2Connection(object):
         :type end_stream: ``bool``
 
         :param priority_weight: Sets the priority weight of the stream. See
-            :meth:`prioritize <H2Connection.prioritize>` for more about how
-            this field works. Defaults to ``None``, which means that no
-            priority information will be sent.
+            :meth:`prioritize <h2.connection.H2Connection.prioritize>` for more
+            about how this field works. Defaults to ``None``, which means that
+            no priority information will be sent.
         :type priority_weight: ``int`` or ``None``
 
         :param priority_depends_on: Sets which stream this one depends on for
-            priority purposes. See :meth:`prioritize <H2Connection.prioritize>`
-            for more about how this field works. Defaults to ``None``, which
-            means that no priority information will be sent.
+            priority purposes. See :meth:`prioritize
+            <h2.connection.H2Connection.prioritize>` for more about how this
+            field works. Defaults to ``None``, which means that no priority
+            information will be sent.
         :type priority_depends_on: ``int`` or ``None``
 
         :param priority_exclusive: Sets whether this stream exclusively depends
             on the stream given in ``priority_depends_on`` for priority
-            purposes. See :meth:`prioritize <H2Connection.prioritize>` for more
-            about how this field workds. Defaults to ``None``, which means that
-            no priority information will be sent.
+            purposes. See :meth:`prioritize
+            <h2.connection.H2Connection.prioritize>` for more about how this
+            field workds. Defaults to ``None``, which means that no priority
+            information will be sent.
         :type priority_depends_on: ``bool`` or ``None``
 
         :returns: Nothing
@@ -989,7 +991,8 @@ class H2Connection(object):
         :param stream_id: The ID of the stream to reset.
         :type stream_id: ``int``
         :param error_code: (optional) The error code to use to reset the
-            stream. Defaults to :data:`NO_ERROR <h2.errors.NO_ERROR>`.
+            stream. Defaults to :data:`ErrorCodes.NO_ERROR
+            <h2.errors.ErrorCodes.NO_ERROR>`.
         :type error_code: ``int``
         :returns: Nothing
         """
@@ -1377,7 +1380,7 @@ class H2Connection(object):
             for frame in self.incoming_buffer:
                 events.extend(self._receive_frame(frame))
         except InvalidPaddingError:
-            self._terminate_connection(PROTOCOL_ERROR)
+            self._terminate_connection(ErrorCodes.PROTOCOL_ERROR)
             raise ProtocolError("Received frame with invalid padding.")
         except ProtocolError as e:
             # For whatever reason, receiving the frame caused a protocol error.
@@ -1507,7 +1510,7 @@ class H2Connection(object):
             # remote peer now believes exists.
             if frame.stream_id in self._reset_streams:
                 f = RstStreamFrame(frame.promised_stream_id)
-                f.error_code = REFUSED_STREAM
+                f.error_code = ErrorCodes.REFUSED_STREAM
                 return [f], events
 
             raise ProtocolError("Attempted to push on closed stream.")
@@ -1711,7 +1714,7 @@ class H2Connection(object):
 
         # Fire an appropriate ConnectionTerminated event.
         new_event = ConnectionTerminated()
-        new_event.error_code = frame.error_code
+        new_event.error_code = _error_code_from_int(frame.error_code)
         new_event.last_stream_id = frame.last_stream_id
         new_event.additional_data = (frame.additional_data
                                      if frame.additional_data else None)
